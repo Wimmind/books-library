@@ -1,8 +1,11 @@
-let books = JSON.parse(localStorage.getItem('books')) || [];
-
-let favoriteBooks = JSON.parse(localStorage.getItem('favoriteBooks')) || [];
-
-let currentIdEditBook = null;
+const state = {
+    books: JSON.parse(localStorage.getItem('books')) || [],
+    favoriteBooks: JSON.parse(localStorage.getItem('favoriteBooks')) || [],
+    currentEditBook: {
+        id : null,
+        data : ''
+    }
+}
 
 const addBookForm = document.querySelector('.add-book-form');
 const allBooksList = document.querySelector('.books-list');
@@ -74,26 +77,30 @@ function addBook( ) {
             text: contentBook,
             read: false
         }
-        books.push(book)
-        updateBooksList()
+        state.books.push(book)
+        updateBooksList(state.books,'books');
     }
     document.querySelector('.title-input').value = '';
     document.querySelector('.content-book').value = '';
 }
-function sortBooks (books){
-    const readBooks = books.filter(book => {
+
+function sortBooks (list){
+    list.sort((a, b)=>{
+        return a.id - b.id;
+    });
+    const readBooks = list.filter(book => {
         return book.read
     })
-    const notReadBooks =  books.filter(book => {
+    const notReadBooks =  list.filter(book => {
         return !book.read
     })
     return [...readBooks,...notReadBooks];
 }
 
-function updateBooksList( ){
-    commonBooksList.innerHTML='';
-    sortBooks(books).forEach((item)=>{
-        commonBooksList.innerHTML += `
+function filBooksList(containerBooks,arrayBooks){
+    containerBooks.innerHTML='';
+    sortBooks(arrayBooks).forEach((item)=>{
+        containerBooks.innerHTML += `
         <div class="books-list_item" id=${item.id} style="background-color:${item.read?'green':'transparent'}" draggable="true">
                 <span>${item.name}</span>
                 <span class="delete-book">удалить</span>
@@ -101,23 +108,17 @@ function updateBooksList( ){
                 <span class="edit-book">редакт.</span>
         </div>`
     })
-    currentIdEditBook = null;
-    localStorage.setItem('books',JSON.stringify(books));
+}
 
-
-
-    favoriteBooksList.innerHTML='';
-    sortBooks(favoriteBooks).forEach((item)=>{
-        favoriteBooksList.innerHTML += `
-        <div class="books-list_item" id=${item.id} style="background-color:${item.read?'green':'transparent'}" draggable="true">
-                <span>${item.name}</span>
-                <span class="delete-book">удалить</span>
-                <span class="mark-book">отм. прочит.</span>
-                <span class="edit-book">редакт.</span>
-        </div>`
-    })
-
-    localStorage.setItem('favoriteBooks',JSON.stringify(favoriteBooks));
+function updateBooksList(){
+    filBooksList(commonBooksList,state.books)
+    filBooksList(favoriteBooksList,state.favoriteBooks)
+    state.currentEditBook = {
+        id : null,
+        data : ''
+    };
+    localStorage.setItem('books',JSON.stringify(state.books));
+    localStorage.setItem('favoriteBooks',JSON.stringify(state.favoriteBooks));
 }
 
 window.onload = () => {
@@ -125,36 +126,53 @@ window.onload = () => {
     updateBooksList();
 }
 
+function showTextBook(data,id){
+    document.querySelector('.books-action_read').innerHTML = '';
+    let text;
+    state[data].forEach((item)=>{
+        if (item.id === id){
+            text = item.text;
+        }
+    })
+    document.querySelector('.books-action_read').innerHTML = text;
+}
+
+function deleteBook(list,id){
+    return list.filter(book => {
+        return book.id !== id;
+    })
+}
+
+function markBook(list,id){
+    list.forEach((item)=>{
+        if (item.id === id){
+            item.read = true;
+        }
+    })
+    return list;
+}
+
 allBooksList.addEventListener('click',(e)=>{
     const target = e.target;
     if (target.classList.contains('books-list_item')){
-        document.querySelector('.books-action_read').innerHTML = '';
-        let text;
-        books.forEach((item)=>{
-            if (item.id === +target.getAttribute('id')){
-                text = item.text;
-            }
-        })
-        document.querySelector('.books-action_read').innerHTML = text;
+        showTextBook(target.parentNode.getAttribute('data'),+target.getAttribute('id'))
     }
     if (target.classList.contains('delete-book')){
-        books = books.filter(book => {
-            return book.id !== (+target.parentNode.getAttribute('id'));
-        })
-        updateBooksList();
+        const data = target.parentNode.parentNode.getAttribute('data');
+        state[data] = deleteBook(state[data],+target.parentNode.getAttribute('id'))
+        updateBooksList()
     }
     if (target.classList.contains('mark-book')){
-        books.forEach((item)=>{
-            if (item.id === +target.parentNode.getAttribute('id')){
-                item.read = true;
-            }
-        })
-        updateBooksList();
+        const data = target.parentNode.parentNode.getAttribute('data');
+        state[data] = markBook(state[data],+target.parentNode.getAttribute('id'))
+        updateBooksList()
     }
     if (target.classList.contains('edit-book')){
+        const data = target.parentNode.parentNode.getAttribute('data');
         let text;
-        books.forEach((item)=>{
-            if (item.id === +target.parentNode.getAttribute('id')){
+        const id = +target.parentNode.getAttribute('id');
+        state[data].forEach((item)=>{
+            if (item.id === id){
                 text = item.text;
             }
         })
@@ -162,15 +180,16 @@ allBooksList.addEventListener('click',(e)=>{
         document.querySelector('.books-action_edit').innerHTML = `
         <textarea class="new-book-text">${text}</textarea>
         <button class="save-text">Сохранить</button>`;
-        currentIdEditBook = +target.parentNode.getAttribute('id');
+        state.currentEditBook.id = id;
+        state.currentEditBook.data = data;
     }
 })
 
 document.querySelector('.books-action_edit').addEventListener('click',(e)=>{
     const target = e.target;
     if (target.classList.contains('save-text')){
-        books.forEach((item)=>{
-            if (item.id === currentIdEditBook){
+        state[state.currentEditBook.data].forEach((item)=>{
+            if (item.id === state.currentEditBook.id){
                 item.text = document.querySelector('.new-book-text').value;
             }
         })
@@ -179,10 +198,13 @@ document.querySelector('.books-action_edit').addEventListener('click',(e)=>{
     }
 })
 
-
 allBooksList.addEventListener('dragstart', event=>{
-    let bookId = JSON.stringify(event.target.getAttribute('id'));
-    event.dataTransfer.setData('id', bookId);
+    let book = JSON.stringify({
+        bookId: event.target.getAttribute('id'),
+        data: event.target.parentNode.getAttribute('data')
+    });
+
+    event.dataTransfer.setData('book', book);
 })
 
 allBooksList.addEventListener('dragover', event=>{
@@ -193,21 +215,24 @@ allBooksList.addEventListener('dragover', event=>{
 allBooksList.addEventListener('drop', event=>{
     event.preventDefault();
     
-    let id = JSON.parse(event.dataTransfer.getData("id"));
-    if (event.target.classList.contains('books-list_favorite')){
-        moveBook(+id);
+    const { bookId, data } = JSON.parse(event.dataTransfer.getData('book'));
+   
+    if (data !== event.target.getAttribute('data') && event.target.getAttribute('data')!==null){
+        moveBook(+bookId,data,event.target.getAttribute('data'))
     }
 })
 
-function moveBook(id){
-    let currentBook;
-    books.forEach(item=>{
-        if (item.id===id){
-            currentBook=item;
+function moveBook(id,fromData,toData){
+    let book;
+    state[fromData].forEach(item=>{
+        if(item.id === id){
+            book = item;
         }
     })
-    books = books.filter(book => {
-        return book.id !== id;
-    })
-    favoriteBooks.push(currentBook)
+    console.log(book)
+    console.log(toData)
+    console.log(fromData)
+    state[toData].push(book)
+    state[fromData] = deleteBook(state[fromData],id);
+    updateBooksList()
 }

@@ -73,15 +73,21 @@ a {
     overflow: auto;
 }
 .books-list {
+    &>p {
+        margin-bottom: 15px;
+    }
     border-right: solid 1px black;
     width: 400px;
     padding: 5px;
     &_common, &_favorite {
-        min-height: 50px;
+        min-height: 200px;
         display: flex;
         flex-direction: column;
         border-top: solid 1px black;
-        padding-top: 5px
+        padding-top: 5px;
+        outline: solid 1px gray;
+        padding: 2px;
+
     }
     &_item {
         border: solid 1px black;
