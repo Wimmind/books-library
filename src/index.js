@@ -40,30 +40,29 @@ addBookForm.addEventListener('click',(e)=>{
         addBook();
     }
     if (target.classList.contains('add-book-btn-file')){
-        const url = 'process.php';
-        const form = document.querySelector('form');
 
+        const url = 'https://apiinterns.osora.ru/';
+        const form = document.querySelector('form');
         form.addEventListener('submit', e => {
             e.preventDefault();
 
-            const files = document.querySelector('[type=file]').files;
+            const file = document.querySelector('[type=file]');
             const formData = new FormData();
-
-            for (let i = 0; i < files.length; i++) {
-                let file = files[i];
-
-                formData.append('files[]', file);
-            }
+            formData.append('file', file);
 
             fetch(url, {
                 method: 'POST',
-                body: formData
+                body: {
+                    file: formData,
+                    login: 'text'
+                }
             }).then(response => {
                 return response.text();
             }).then(data => {
                 console.log(data);
             });
         });
+       
     }
 })
 
@@ -229,9 +228,6 @@ function moveBook(id,fromData,toData){
             book = item;
         }
     })
-    console.log(book)
-    console.log(toData)
-    console.log(fromData)
     state[toData].push(book)
     state[fromData] = deleteBook(state[fromData],id);
     updateBooksList()
