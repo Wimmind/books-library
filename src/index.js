@@ -16,6 +16,8 @@ const favoriteBooksList = document.querySelector('.books-list_favorite');
 
 addBookForm.addEventListener('click',(e)=>{
     const target = e.target;
+    const nameBook = document.querySelector('.title-input').value;
+
     if (target.classList.contains('method')){
         addBookForm.querySelectorAll('.indicator').forEach((item)=>{
             item.style.backgroundColor = 'gray';
@@ -30,45 +32,37 @@ addBookForm.addEventListener('click',(e)=>{
                 </div>`;
         } else {
             uploadContent.innerHTML =`
-            <form method="post" enctype="multipart/form-data" class="add-book-btn-file">
-                <input type="file" name="files[]" multiple>
-                <input type="submit" value="Upload File" name="submit">
+            <form enctype="multipart/form-data">
+                <input type="file" name="file">
+                <input type="submit" value="Upload File" name="submit" class="add-book-btn-file">
             </form>`;
         }
     }
     if (target.classList.contains('add-book-btn')){
-        addBook();
+        const contentBook = document.querySelector('.content-book').value;
+        addBook(nameBook,contentBook);
+        document.querySelector('.content-book').value = '';
     }
     if (target.classList.contains('add-book-btn-file')){
+        e.preventDefault();
+        const file = document.querySelector('[type=file]').files[0];
+        const formData = new FormData()
 
-        const url = 'https://apiinterns.osora.ru/';
-        const form = document.querySelector('form');
-        form.addEventListener('submit', e => {
-            e.preventDefault();
+        formData.append('file',file);
+        formData.append('login',nameBook);
 
-            const file = document.querySelector('[type=file]');
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch(url, {
-                method: 'POST',
-                body: {
-                    file: formData,
-                    login: 'text'
-                }
-            }).then(response => {
-                return response.text();
-            }).then(data => {
-                console.log(data);
-            });
+        fetch('https://apiinterns.osora.ru/', {
+            method: 'POST',
+            body: formData
+        }).then((res)=>res.json()).then((data)=>{
+            addBook(nameBook,data.text);
+        }).catch(function(e){
+            console.log(e)
         });
-       
     }
 })
 
-function addBook( ) {
-    const nameBook = document.querySelector('.title-input').value;
-    const contentBook = document.querySelector('.content-book').value;
+function addBook(nameBook,contentBook) {
     if (nameBook && contentBook){
         const book = {
             id : Date.now(),
@@ -80,7 +74,6 @@ function addBook( ) {
         updateBooksList(state.books,'books');
     }
     document.querySelector('.title-input').value = '';
-    document.querySelector('.content-book').value = '';
 }
 
 function sortBooks (list){
